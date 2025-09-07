@@ -15,7 +15,7 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -43,12 +43,15 @@ public class CustomerServiceIT {
     private CacheManager cacheManager;
 
     @Container
-    static MongoDBContainer mongoDBContainer =
-            new MongoDBContainer(DockerImageName.parse("mongo:latest"));
+    static GenericContainer<?> mongoDBContainer =
+            new GenericContainer<>(DockerImageName.parse("mongo:latest")).withExposedPorts(27017);
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+        String uri = String.format("mongodb://%s:%d/test",
+            mongoDBContainer.getHost(),
+            mongoDBContainer.getMappedPort(27017));
+        registry.add("spring.data.mongodb.uri", () -> uri);
     }
 
     @BeforeEach
@@ -68,4 +71,3 @@ public class CustomerServiceIT {
         assertThat(found.get().getName()).isEqualTo("Alice Smith");
     }
 }
-
